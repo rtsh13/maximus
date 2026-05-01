@@ -1,0 +1,51 @@
+# Maximus example configuration.
+# Copy this file, fill in your values, and run:
+#   maximus run --config config.toml
+
+# ---------------------------------------------------------------------------
+# Source: Postgres connection
+# ---------------------------------------------------------------------------
+[source]
+# Standard libpq connection string.
+dsn = "postgres://maximus:maximus@localhost:5432/maximus"
+
+# Replication slot name. Created by Maximus on first run if absent.
+# WARNING: an abandoned slot retains WAL indefinitely — drop it manually
+# if you stop using Maximus.
+slot = "maximus_slot"
+
+# Publication to subscribe to (must already exist in Postgres).
+publication = "maximus_pub"
+
+# ---------------------------------------------------------------------------
+# Sink: Qdrant
+# ---------------------------------------------------------------------------
+[sink]
+url        = "http://localhost:6333"
+collection = "documents"
+
+# ---------------------------------------------------------------------------
+# Embedder: OpenAI
+# ---------------------------------------------------------------------------
+[embedder]
+provider = "openai"
+api_key  = "sk-..."            # or set env var OPENAI_API_KEY
+model    = "text-embedding-3-small"
+
+# ---------------------------------------------------------------------------
+# Table mappings
+# Each [[mapping]] block describes one table.
+# ---------------------------------------------------------------------------
+[[mapping]]
+table       = "documents"
+primary_key = "id"
+
+# Go text/template applied to the row columns to produce the string to embed.
+template = "{{.title}} {{.body}}"
+
+# Dimension must match the model output (text-embedding-3-small → 1536).
+dimension = 1536
+
+# (v0.2) Columns whose changes should trigger re-embedding.
+# Changes to any other column are ignored.
+# embedding_columns = ["title", "body"]
