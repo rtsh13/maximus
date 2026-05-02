@@ -1,42 +1,43 @@
 # Maximus
 
-> **Early WIP — no announcement yet.**
+> **Early WIP. No announcement yet.**
 
-Maximus is a single-binary, open source CDC tool that keeps vector stores synchronized with Postgres in near real time — without Kafka, without triggers, and without re-embedding rows whose semantically relevant columns have not changed.
+Maximus lets you keep a Qdrant vector store in sync with your Postgres database in near real time. You point it at a table, tell it which columns matter for embeddings, and it handles the rest: it watches the Postgres write-ahead log, skips rows whose relevant columns have not changed, calls the embedding API only when needed, and upserts or removes vectors in Qdrant automatically.
 
-## What it does
+You configure everything in a single TOML file. You do not write any code.
 
-- Captures `INSERT`, `UPDATE`, and `DELETE` events from Postgres via logical replication (`pgoutput`).
-- Builds an embedding text string from a user-supplied template.
-- Calls an embedding API (OpenAI `text-embedding-3-small` in v0.1) only when needed.
-- Upserts or deletes vectors in Qdrant, keyed by the row's primary key.
-- Checkpoints the last acknowledged LSN to SQLite so it resumes cleanly after a crash.
-- Configures entirely from a single TOML file — no code required.
+## What you get
 
-## What it is not
+- Your vectors stay fresh within seconds of a row changing in Postgres.
+- You stop paying to re-embed rows where only operational metadata changed (timestamps, counters, flags).
+- You get a clean audit trail: every vector is keyed to the source row and the LSN that produced it.
+- If Maximus crashes, it picks up from where it left off. No duplicates, no lost events.
+
+## What Maximus is not
 
 - Not a vector database.
-- Not a Debezium replacement for warehouse loading.
+- Not a replacement for Debezium if you are loading a data warehouse.
 - Not a general-purpose ETL tool.
-- Not enterprise-licensed. Maximus is and will remain open source (MIT).
+- Not enterprise-licensed. Maximus is MIT and will stay that way.
 
 ## Status
 
 | Version | Status | Target |
 |---------|--------|--------|
-| v0.1    | In progress | End of May 2026 |
-| v0.2    | Planned | End of June 2026 |
+| v0.1 | In progress | End of May 2026 |
+| v0.2 | Planned | End of June 2026 |
+
+v0.1 gets the pipeline working end to end. v0.2 adds the column-aware skip logic that cuts embedding costs.
 
 ## Quickstart
 
-> Not available yet. Coming in v0.2 once the binary is stable.
+Coming in v0.2. Until then, see `examples/config.toml` for the full annotated config reference.
 
 ```toml
-# examples/config.toml — see the file for annotated fields
 [source]
 dsn         = "postgres://user:pass@localhost:5432/mydb"
-slot        = "driftwatch_slot"
-publication = "driftwatch_pub"
+slot        = "maximus_slot"
+publication = "maximus_pub"
 
 [sink]
 url        = "http://localhost:6333"
@@ -55,28 +56,28 @@ dimension   = 1536
 ```
 
 ```sh
-driftwatch run --config config.toml
+maximus run --config config.toml
 ```
 
 ## Requirements
 
-- Postgres 14+ with `wal_level = logical`.
-- A running Qdrant instance.
+- Postgres 14+ with `wal_level = logical` and admin access to create a replication slot.
+- A running Qdrant instance reachable on the network.
 - An OpenAI API key (v0.1).
 
-## Development
+## Run it locally
 
 ```sh
-# Start local Postgres + Qdrant
+# Start Postgres and Qdrant
 docker compose up -d
 
-# Apply test schema
+# Create the test table and publication
 psql "$DSN" -f dev/setup.sql
 
-# Build
+# Build the binary
 make build
 
-# Run tests
+# Run the tests
 make test
 ```
 
