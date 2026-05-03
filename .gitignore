@@ -11,6 +11,9 @@ go.sum
 go.work
 go.work.sum
 
+# Local reference docs (not shipped)
+docs/
+
 # Planning and session docs (not part of the shipped repo)
 PRD.md
 MILESTONES.md
